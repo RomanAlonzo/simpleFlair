@@ -1,0 +1,63 @@
+#rename this string to be your column name
+textColumn = "review"
+
+
+
+
+
+import pandas as pd
+import flair
+from flair.data import Sentence
+import string
+from string import punctuation
+
+df = pd.DataFrame(inputTable)
+
+#cleaning the input text column
+df = df[~df[textColumn].isnull()]
+df.dropna(inplace = True)
+df[textColumn] = df[textColumn].astype(str)
+
+
+def get_text_processing(text):
+    no_punctuation = [char for char in text if char not in string.punctuation]
+    no_punctuation = ''.join(no_punctuation)
+    return ' '.join([word for word in no_punctuation.split()])
+
+df[textColumn] = df[textColumn].apply(get_text_processing)
+
+df['cleanedText'] = df[textColumn].apply(lambda x: " ".join(x.lower() for x in x.split()))
+
+df['cleanedText'] = df['cleanedText'].str.replace('[^\w\s]', '')
+df['cleanedText'] = df['cleanedText'].str.replace('none', '')
+df['cleanedText'] = df['cleanedText'].str.replace('na', '')
+
+#df = df.fillna('null')
+
+
+#now for the flair stuff
+sentiment_model = flair.models.TextClassifier.load('en-sentiment')
+
+sentiment = []
+confidence = []
+
+for sentence in df['cleanedText']:
+	
+    if sentence.strip() == "":
+	    sentiment.append("")
+	    confidence.append("")
+    else:
+	    sample = flair.data.Sentence(sentence)
+	    sentiment_model.predict(sample)
+		
+	    sentiment.append(sample.labels[0].value)
+	    confidence.append(sample.labels[0].score)
+
+
+df['sentiment'] = sentiment
+
+confidenceString = list(map(str, confidence))
+
+df['confidence'] = confidenceString
+
+flairSentiment = df
